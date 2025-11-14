@@ -1,0 +1,132 @@
+services:
+  # Jitsi Web UI
+  web:
+    image: jitsi/web:stable-7439
+    restart: unless-stopped
+    ports:
+      - '${HTTP_PORT:-80}:80'
+      - '${HTTPS_PORT:-443}:443'
+    volumes:
+      - ${CONFIG}/web:/config
+      - ${CONFIG}/web/letsencrypt:/etc/letsencrypt
+    environment:
+      - ENABLE_AUTH=1
+      - ENABLE_GUESTS=1
+      - ENABLE_LETSENCRYPT=${ENABLE_LETSENCRYPT:-0}
+      - LETSENCRYPT_DOMAIN=${JITSI_DOMAIN}
+      - LETSENCRYPT_EMAIL=${LETSENCRYPT_EMAIL}
+      - PUBLIC_URL=${PUBLIC_URL:-http://${JITSI_DOMAIN}}
+      - XMPP_DOMAIN=${JITSI_DOMAIN}
+      - XMPP_AUTH_DOMAIN=auth.${JITSI_DOMAIN}
+      - XMPP_MUC_DOMAIN=muc.${JITSI_DOMAIN}
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.${JITSI_DOMAIN}
+      - XMPP_BOSH_URL_BASE=http://localhost/http-bind
+      - ENABLE_XMPP_WEBSOCKET=0
+      - DISABLE_WEBSOCKET=1
+      - ENABLE_PREJOIN_PAGE=0
+      - ENABLE_WELCOME_PAGE=0
+      - ENABLE_CLOSE_PAGE=0
+      - ENABLE_RECORDING=1
+      - JWT_APP_ID=${JWT_APP_ID:-collabsphere}
+      - JWT_APP_SECRET=${JWT_APP_SECRET}
+      - JWT_ASAP_KEYSERVER=${JWT_ASAP_KEYSERVER}
+      - JWT_ALLOW_EMPTY=0
+      - JWT_AUTH_TYPE=token
+      - ENABLE_LOBBY=0
+      - ENABLE_TRANSCRIPTIONS=1
+      - ENABLE_REMB=1
+      - ENABLE_BREAKOUT_ROOMS=1
+      - ENABLE_IPV6=0
+    networks:
+      - jitsi-meet
+
+  # Prosody XMPP Server
+  prosody:
+    image: jitsi/prosody:stable-7439
+    restart: unless-stopped
+    ports:
+      - '5280:5280'
+    volumes:
+      - ${CONFIG}/prosody:/config
+    environment:
+      - AUTH_TYPE=jwt
+      - ENABLE_AUTH=1
+      - ENABLE_GUESTS=0
+      - GLOBAL_MODULES=speakerstats,conference_duration
+      - GLOBAL_CONFIG=speakerstats_component = "speakerstats"; speakerstats_component = "conference_duration"
+      - XMPP_DOMAIN=${JITSI_DOMAIN}
+      - XMPP_AUTH_DOMAIN=auth.${JITSI_DOMAIN}
+      - XMPP_MUC_DOMAIN=muc.${JITSI_DOMAIN}
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.${JITSI_DOMAIN}
+      - JWT_APP_ID=${JWT_APP_ID:-collabsphere}
+      - JWT_APP_SECRET=${JWT_APP_SECRET}
+      - JWT_ASAP_KEYSERVER=${JWT_ASAP_KEYSERVER}
+      - JWT_ALLOW_EMPTY=0
+      - JWT_AUTH_TYPE=token
+      - JVB_AUTH_USER=jvb
+      - JVB_AUTH_PASSWORD=${JVB_AUTH_PASSWORD}
+      - JICOFO_AUTH_USER=focus
+      - JICOFO_AUTH_PASSWORD=${JICOFO_AUTH_PASSWORD}
+      - JIBRI_RECORDER_PASSWORD=${JIBRI_RECORDER_PASSWORD}
+      - JIBRI_XMPP_PASSWORD=${JIBRI_XMPP_PASSWORD}
+    networks:
+      - jitsi-meet
+
+  # Jitsi Videobridge (Media Server)
+  jvb:
+    image: jitsi/jvb:stable-7439
+    restart: unless-stopped
+    ports:
+      - '${JVB_PORT:-10000}:10000/udp'
+      - '${JVB_TCP_PORT:-4443}:4443/tcp'
+    volumes:
+      - ${CONFIG}/jvb:/config
+    environment:
+      - DOCKER_HOST_ADDRESS=${DOCKER_HOST_ADDRESS}
+      - XMPP_AUTH_DOMAIN=auth.${JITSI_DOMAIN}
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.${JITSI_DOMAIN}
+      - XMPP_SERVER=prosody
+      - JVB_AUTH_USER=jvb
+      - JVB_AUTH_PASSWORD=${JVB_AUTH_PASSWORD}
+      - JVB_STUN_SERVERS=stun.l.google.com:19302,stun1.l.google.com:19302
+      - ENABLE_APIS=rest,colibri
+      - ENABLE_COLIBRI_WEBSOCKET=1
+      - ENABLE_HEALTH_CHECKS=1
+      - ENABLE_OCTO=0
+      - TZ=UTC
+    networks:
+      - jitsi-meet
+    depends_on:
+      - prosody
+
+  # Jitsi Conference Focus (Jicofo)
+  jicofo:
+    image: jitsi/jicofo:stable-7439
+    restart: unless-stopped
+    volumes:
+      - ${CONFIG}/jicofo:/config
+    environment:
+      - ENABLE_AUTH=1
+      - XMPP_DOMAIN=${JITSI_DOMAIN}
+      - XMPP_AUTH_DOMAIN=auth.${JITSI_DOMAIN}
+      - XMPP_INTERNAL_MUC_DOMAIN=internal-muc.${JITSI_DOMAIN}
+      - XMPP_SERVER=prosody
+      - JICOFO_AUTH_USER=focus
+      - JICOFO_AUTH_PASSWORD=${JICOFO_AUTH_PASSWORD}
+      - JICOFO_ENABLE_HEALTH_CHECKS=1
+      - JVB_BREWERY_MUC=jvbbrewery
+      - JIGASI_BREWERY_MUC=jigasibrewery
+      - JIGASI_SIP_URI=guest
+      - JIBRI_BREWERY_MUC=jibribrewery
+      - JIBRI_PENDING_TIMEOUT=90
+      - TZ=UTC
+    networks:
+      - jitsi-meet
+    depends_on:
+      - prosody
+      - jvb
+
+networks:
+  jitsi-meet:
+    driver: bridge
+
