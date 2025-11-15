@@ -25,12 +25,12 @@ services:
       - DISABLE_WEBSOCKET=1
       - ENABLE_PREJOIN_PAGE=0
       - ENABLE_WELCOME_PAGE=0
-      - ENABLE_CLOSE_PAGE=0
+      - ENABLE_CLOSE_PAGE=1
       - ENABLE_RECORDING=1
       - JWT_APP_ID=${JWT_APP_ID:-collabsphere}
       - JWT_APP_SECRET=${JWT_APP_SECRET}
       - JWT_ASAP_KEYSERVER=${JWT_ASAP_KEYSERVER}
-      - JWT_ALLOW_EMPTY=0
+      - JWT_ALLOW_EMPTY=1
       - JWT_AUTH_TYPE=token
       - ENABLE_LOBBY=0
       - ENABLE_TRANSCRIPTIONS=1
@@ -51,7 +51,7 @@ services:
     environment:
       - AUTH_TYPE=jwt
       - ENABLE_AUTH=1
-      - ENABLE_GUESTS=0
+      - ENABLE_GUESTS=1
       - GLOBAL_MODULES=speakerstats,conference_duration
       - GLOBAL_CONFIG=speakerstats_component = "speakerstats"; speakerstats_component = "conference_duration"
       - XMPP_DOMAIN=${JITSI_DOMAIN}
@@ -61,7 +61,7 @@ services:
       - JWT_APP_ID=${JWT_APP_ID:-collabsphere}
       - JWT_APP_SECRET=${JWT_APP_SECRET}
       - JWT_ASAP_KEYSERVER=${JWT_ASAP_KEYSERVER}
-      - JWT_ALLOW_EMPTY=0
+      - JWT_ALLOW_EMPTY=1
       - JWT_AUTH_TYPE=token
       - JVB_AUTH_USER=jvb
       - JVB_AUTH_PASSWORD=${JVB_AUTH_PASSWORD}

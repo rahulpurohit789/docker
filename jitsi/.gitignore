@@ -1,0 +1,44 @@
+# ============================================
+# JITSI DOCKER - GITIGNORE
+# ============================================
+# DO NOT commit sensitive files and secrets
+
+# Environment file with secrets
+.env
+.env.local
+.env.*.local
+
+# Generated passwords and secrets
+*.env.backup
+.env.bak
+
+# Prosody data (contains passwords and user data)
+jitsi-config/prosody/data/
+jitsi-config/prosody/certs/
+
+# SSL Certificates
+jitsi-config/web/letsencrypt/
+jitsi-config/web/keys/
+
+# Prosody PID file
+jitsi-config/prosody/prosody.pid
+
+# Logs (if any are generated locally)
+*.log
+logs/
+
+# Docker volumes (if used)
+volumes/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+

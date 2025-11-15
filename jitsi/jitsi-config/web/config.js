@@ -124,7 +124,7 @@ config.prejoinConfig.hideDisplayName = false;
 config.enableWelcomePage = false;
 
 // Close page.
-config.enableClosePage = false;
+config.enableClosePage = true;
 
 // Default language.
 // Require users to always specify a display name.

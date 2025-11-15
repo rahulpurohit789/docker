@@ -55,7 +55,7 @@ VirtualHost "localhost"
     authentication = "token"
     app_id = "collabsphere"
     app_secret = "dev-jitsi-secret-change-in-production"
-    allow_empty_token = false
+    allow_empty_token = true
     
   
 
@@ -110,6 +110,11 @@ VirtualHost "localhost"
 
     c2s_require_encryption = false
 
+
+VirtualHost "guest.meet.jitsi"
+    authentication = "jitsi-anonymous"
+
+    c2s_require_encryption = false
 
 
 VirtualHost "auth.localhost"

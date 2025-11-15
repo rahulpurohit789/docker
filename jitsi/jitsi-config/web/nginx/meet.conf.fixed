@@ -45,7 +45,7 @@ location ~ ^/(libs|css|static|images|fonts|lang|sounds|connection_optimization|.
 }
 
 
-# BOSH - FIXED: Proxy directly to prosody service
+# BOSH - Fixed to use prosody service (CORRECT CONFIGURATION)
 location = /http-bind {
     proxy_set_header X-Forwarded-For $remote_addr;
     proxy_set_header Host $http_host;
@@ -85,7 +85,7 @@ location @root_path {
         alias /config/config.js;
     }
 
-    # BOSH for subdomains - FIXED: Proxy directly to prosody (no rewrite to avoid double path)
+    # BOSH for subdomains - Proxy directly to prosody (FIXED)
     location ~ ^/([^/?&:'"]+)/http-bind {
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header Host $http_host;
