@@ -127,28 +127,36 @@ sed -i '/@root_path/d' "$MEET_CONF"
 sed -i 's|try_files $uri @root_path;|try_files $uri $uri/ /index.html;|g' "$MEET_CONF"
 sed -i 's|try_files $uri;|try_files $uri $uri/ /index.html;|g' "$MEET_CONF"
 
-# Replace meeting room location block with proper configuration using perl
-if command -v perl >/dev/null 2>&1; then
-    perl -i -0pe 's/location ~ \^\/\(\[^\/\?&:''""\]\+\)\$ \{.*?\n\}/location ~ ^\/([^\/\?&:''""]+)\$ {\n    try_files $uri $uri\/ \/index.html;\n}\n/gs' "$MEET_CONF"
-else
-    # Fallback: remove old block and insert new one
-    sed -i '/location ~ \^\/\(\[^\/\?&:'"'"'"]\+\)\$/,/^}/d' "$MEET_CONF"
-    # Find insertion point (after colibri websockets)
-    MEETING_LINE=$(grep -n '# colibri (JVB) websockets' "$MEET_CONF" | head -1 | cut -d: -f1)
-    if [ -n "$MEETING_LINE" ]; then
-        # Find the line after the colibri location block ends
-        AFTER_COLIBRI=$(awk "NR > $MEETING_LINE && /^}/ {print NR+1; exit}" "$MEET_CONF")
-        if [ -z "$AFTER_COLIBRI" ]; then
-            AFTER_COLIBRI=$((MEETING_LINE + 10))
-        fi
-        sed -i "${AFTER_COLIBRI}i\\
+# Replace meeting room location block with proper configuration
+# Use sed instead of perl to avoid escaping issues
+# Remove old meeting room location block
+sed -i '/location ~ \^\/\(\[^\/\?&:'"'"'"]\+\)\$/,/^}/d' "$MEET_CONF"
+sed -i '/location ~.*\[^\/\?&:'"'"'"]\+.*\$/,/^}/d' "$MEET_CONF"
+
+# Find insertion point (after colibri websockets)
+MEETING_LINE=$(grep -n '# colibri (JVB) websockets' "$MEET_CONF" | head -1 | cut -d: -f1)
+if [ -n "$MEETING_LINE" ]; then
+    # Find the line after the colibri location block ends (find closing brace)
+    AFTER_COLIBRI=$(awk "NR > $MEETING_LINE && /^}/ {print NR+1; exit}" "$MEET_CONF")
+    if [ -z "$AFTER_COLIBRI" ]; then
+        # If can't find closing brace, insert after a few lines
+        AFTER_COLIBRI=$((MEETING_LINE + 10))
+    fi
+    # Insert the meeting room routing block
+    sed -i "${AFTER_COLIBRI}i\\
 \\
 # Meeting room routing - serve index.html\\
 location ~ ^/([^/?&:'"'"'"]+)$ {\\
     try_files \$uri \$uri/ /index.html;\\
 }\\
 " "$MEET_CONF"
-    fi
+else
+    # If colibri section not found, append at end
+    echo "" >> "$MEET_CONF"
+    echo "# Meeting room routing - serve index.html" >> "$MEET_CONF"
+    echo "location ~ ^/([^/?&:'"'"'"]+)$ {" >> "$MEET_CONF"
+    echo "    try_files \$uri \$uri/ /index.html;" >> "$MEET_CONF"
+    echo "}" >> "$MEET_CONF"
 fi
 
 # Ensure root is set correctly
