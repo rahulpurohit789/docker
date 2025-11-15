@@ -20,8 +20,8 @@ if [ ! -f "$MEET_CONF" ]; then
     exit 0
 fi
 
-# Check if file has our fixed BOSH configuration (new pattern with rewrite to strip query params)
-if ! grep -q 'rewrite ^/http-bind$ /http-bind break;' "$MEET_CONF" || ! grep -q 'proxy_pass http://prosody:5280;$' "$MEET_CONF"; then
+# Check if file has our fixed BOSH configuration (explicit URI path to prevent query params)
+if ! grep -q 'proxy_pass http://prosody:5280/http-bind;' "$MEET_CONF"; then
     echo "[Protect Config] ⚠️  meet.conf is still wrong after restore - will be fixed by start-jitsi.sh"
 else
     echo "[Protect Config] ✅ meet.conf has our fixed configuration"
