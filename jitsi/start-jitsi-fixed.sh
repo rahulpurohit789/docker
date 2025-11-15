@@ -46,6 +46,8 @@ fi
 sed -i 's|proxy_pass http://localhost/http-bind/http-bind;|proxy_pass http://prosody:5280/http-bind;|g' "\$MEET_CONF"
 sed -i 's|proxy_pass http://localhost:5280/http-bind;|proxy_pass http://prosody:5280/http-bind;|g' "\$MEET_CONF"
 sed -i 's|proxy_set_header Host localhost;|proxy_set_header Host \$http_host;|g' "\$MEET_CONF"
+# Fix Host header if it's set to a specific IP (should use variable)
+sed -i 's|proxy_set_header Host [0-9.]*;|proxy_set_header Host \$http_host;|g' "\$MEET_CONF"
 
 # Fix subdomain BOSH location using perl (more reliable)
 if command -v perl >/dev/null 2>&1; then
