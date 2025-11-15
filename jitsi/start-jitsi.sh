@@ -50,13 +50,25 @@ if [ ! -f "\$MEET_CONF" ]; then
     exit 1
 fi
 
-# Remove incorrect BOSH location blocks
-perl -i -0pe 's/location = \/http-bind \{.*?\n\}//gs' "\$MEET_CONF" 2>/dev/null || true
-perl -i -0pe 's/location ~ \^\/\(\[^\/\?&:'"'"'"]+\)\/http-bind \{.*?\n\}//gs' "\$MEET_CONF" 2>/dev/null || true
+# Remove ALL BOSH location blocks (including malformed single-line ones)
+# Remove main BOSH block (any format)
+sed -i '/location = \/http-bind {/,/^}/d' "\$MEET_CONF"
+sed -i '/# BOSH - Fixed configurationlocation = \/http-bind/,/^}/d' "\$MEET_CONF"
+# Remove subdomain BOSH blocks
+sed -i '/location ~ \^\/\(\[^\/\?&:'"'"'"]\+\)\/http-bind/,/^}/d' "\$MEET_CONF"
+# Remove single-line malformed blocks (including comments on same line)
+sed -i '/# BOSH.*location = \/http-bind.*{.*}/d' "\$MEET_CONF"
+sed -i '/location = \/http-bind.*{.*proxy_pass.*}/d' "\$MEET_CONF"
 
 # Fix Host header if it's set to a specific IP
 sed -i 's|proxy_set_header Host [0-9.]*;|proxy_set_header Host \$http_host;|g' "\$MEET_CONF"
 sed -i 's|proxy_set_header Host localhost;|proxy_set_header Host \$http_host;|g' "\$MEET_CONF"
+# Fix empty proxy_set_header values
+sed -i 's|proxy_set_header X-Forwarded-For ;|proxy_set_header X-Forwarded-For \$remote_addr;|g' "\$MEET_CONF"
+sed -i 's|proxy_set_header Host ;|proxy_set_header Host \$http_host;|g' "\$MEET_CONF"
+sed -i 's|proxy_set_header X-Forwarded-Proto ;|proxy_set_header X-Forwarded-Proto \$scheme;|g' "\$MEET_CONF"
+# Remove proxy_method POST (not supported in some nginx versions, POST is default anyway)
+sed -i '/proxy_method POST;/d' "\$MEET_CONF"
 
 # Find insertion point (before colibri websockets section)
 INSERT_LINE=\$(grep -n '# colibri (JVB) websockets' "\$MEET_CONF" | head -1 | cut -d: -f1)
@@ -77,7 +89,6 @@ location = /http-bind {\\
     tcp_nodelay on;\\
     proxy_read_timeout 3600s;\\
     proxy_http_version 1.1;\\
-    proxy_method POST;\\
     proxy_pass_request_headers on;\\
     proxy_pass_request_body on;\\
 }\\
@@ -93,7 +104,6 @@ location ~ ^/([^/?&:'"'"'"]+)/http-bind {\\
     tcp_nodelay on;\\
     proxy_read_timeout 3600s;\\
     proxy_http_version 1.1;\\
-    proxy_method POST;\\
     proxy_pass_request_headers on;\\
     proxy_pass_request_body on;\\
 }\\

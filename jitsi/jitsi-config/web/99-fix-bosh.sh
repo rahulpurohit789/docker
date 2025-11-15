@@ -39,10 +39,10 @@ sed -i 's|proxy_set_header Host [0-9.]*;|proxy_set_header Host $http_host;|g' "$
 # Method 2: Use perl to replace entire BOSH location blocks (more reliable)
 if command -v perl >/dev/null 2>&1; then
     # Replace main BOSH location block with correct configuration
-    perl -i -0pe 's/location = \/http-bind \{.*?proxy_pass[^;]*;.*?\n\}/# BOSH - Fixed to use prosody service\nlocation = \/http-bind {\n    proxy_set_header X-Forwarded-For \$remote_addr;\n    proxy_set_header Host \$http_host;\n    proxy_set_header X-Forwarded-Proto \$scheme;\n\n    proxy_pass http:\/\/prosody:5280\/http-bind;\n    proxy_buffering off;\n    tcp_nodelay on;\n    proxy_read_timeout 3600s;\n    proxy_http_version 1.1;\n    proxy_method POST;\n    proxy_pass_request_headers on;\n    proxy_pass_request_body on;\n}\n/gs' "$MEET_CONF"
+    perl -i -0pe 's/location = \/http-bind \{.*?proxy_pass[^;]*;.*?\n\}/# BOSH - Fixed to use prosody service\nlocation = \/http-bind {\n    proxy_set_header X-Forwarded-For \$remote_addr;\n    proxy_set_header Host \$http_host;\n    proxy_set_header X-Forwarded-Proto \$scheme;\n\n    proxy_pass http:\/\/prosody:5280\/http-bind;\n    proxy_buffering off;\n    tcp_nodelay on;\n    proxy_read_timeout 3600s;\n    proxy_http_version 1.1;\n    proxy_pass_request_headers on;\n    proxy_pass_request_body on;\n}\n/gs' "$MEET_CONF"
     
     # Replace subdomain BOSH location blocks that use rewrite
-    perl -i -0pe 's/location ~ \^\/\(\[^\/\?&:''""\]\+\)\/http-bind \{.*?rewrite[^}]*\}/# BOSH for subdomains - Fixed to proxy directly to prosody\n    location ~ ^\/([^\/\?&:''""]+)\/http-bind {\n        proxy_set_header X-Forwarded-For \$remote_addr;\n        proxy_set_header Host \$http_host;\n        proxy_set_header X-Forwarded-Proto \$scheme;\n        \n        proxy_pass http:\/\/prosody:5280\/http-bind;\n        proxy_buffering off;\n        tcp_nodelay on;\n        proxy_read_timeout 3600s;\n        proxy_http_version 1.1;\n        proxy_method POST;\n        proxy_pass_request_headers on;\n        proxy_pass_request_body on;\n    }/gs' "$MEET_CONF"
+    perl -i -0pe 's/location ~ \^\/\(\[^\/\?&:''""\]\+\)\/http-bind \{.*?rewrite[^}]*\}/# BOSH for subdomains - Fixed to proxy directly to prosody\n    location ~ ^\/([^\/\?&:''""]+)\/http-bind {\n        proxy_set_header X-Forwarded-For \$remote_addr;\n        proxy_set_header Host \$http_host;\n        proxy_set_header X-Forwarded-Proto \$scheme;\n        \n        proxy_pass http:\/\/prosody:5280\/http-bind;\n        proxy_buffering off;\n        tcp_nodelay on;\n        proxy_read_timeout 3600s;\n        proxy_http_version 1.1;\n        proxy_pass_request_headers on;\n        proxy_pass_request_body on;\n    }/gs' "$MEET_CONF"
 fi
 
 # Method 3: If fixed template exists and main BOSH block is still wrong, use template
@@ -82,7 +82,6 @@ location = /http-bind {\\
     tcp_nodelay on;\\
     proxy_read_timeout 3600s;\\
     proxy_http_version 1.1;\\
-    proxy_method POST;\\
     proxy_pass_request_headers on;\\
     proxy_pass_request_body on;\\
 }\\
@@ -105,6 +104,16 @@ else
     echo "[BOSH Fix Script] ❌ ERROR: Fix verification failed - prosody proxy_pass not found"
     exit 1
 fi
+
+# Remove all malformed BOSH blocks (including single-line ones)
+sed -i '/# BOSH.*location = \/http-bind.*{.*}/d' "$MEET_CONF"
+sed -i '/location = \/http-bind.*{.*proxy_pass.*}/d' "$MEET_CONF"
+# Fix empty proxy_set_header values
+sed -i 's|proxy_set_header X-Forwarded-For ;|proxy_set_header X-Forwarded-For $remote_addr;|g' "$MEET_CONF"
+sed -i 's|proxy_set_header Host ;|proxy_set_header Host $http_host;|g' "$MEET_CONF"
+sed -i 's|proxy_set_header X-Forwarded-Proto ;|proxy_set_header X-Forwarded-Proto $scheme;|g' "$MEET_CONF"
+# Remove proxy_method POST (not supported in some nginx versions)
+sed -i '/proxy_method POST;/d' "$MEET_CONF"
 
 # Fix meeting room routing to serve index.html
 echo "[BOSH Fix Script] Fixing meeting room routing..."
