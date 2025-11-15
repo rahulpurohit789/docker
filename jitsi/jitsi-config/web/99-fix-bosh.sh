@@ -117,10 +117,65 @@ sed -i '/proxy_method POST;/d' "$MEET_CONF"
 
 # Fix meeting room routing to serve index.html
 echo "[BOSH Fix Script] Fixing meeting room routing..."
-sed -i 's|try_files $uri @root_path;|try_files $uri $uri/ /index.html;|g' "$MEET_CONF"
-sed -i 's|rewrite ^/(.*)$ / break;|rewrite ^/(.*)$ /index.html break;|g' "$MEET_CONF"
 
-# Remove @root_path location block if it exists (no longer needed)
+# Remove any @root_path location block first
 sed -i '/location @root_path {/,/^}/d' "$MEET_CONF"
+# Remove any references to @root_path
+sed -i '/@root_path/d' "$MEET_CONF"
+
+# Fix try_files directive to serve index.html directly
+sed -i 's|try_files $uri @root_path;|try_files $uri $uri/ /index.html;|g' "$MEET_CONF"
+sed -i 's|try_files $uri;|try_files $uri $uri/ /index.html;|g' "$MEET_CONF"
+
+# Replace meeting room location block with proper configuration using perl
+if command -v perl >/dev/null 2>&1; then
+    perl -i -0pe 's/location ~ \^\/\(\[^\/\?&:''""\]\+\)\$ \{.*?\n\}/location ~ ^\/([^\/\?&:''""]+)\$ {\n    try_files $uri $uri\/ \/index.html;\n}\n/gs' "$MEET_CONF"
+else
+    # Fallback: remove old block and insert new one
+    sed -i '/location ~ \^\/\(\[^\/\?&:'"'"'"]\+\)\$/,/^}/d' "$MEET_CONF"
+    # Find insertion point (after colibri websockets)
+    MEETING_LINE=$(grep -n '# colibri (JVB) websockets' "$MEET_CONF" | head -1 | cut -d: -f1)
+    if [ -n "$MEETING_LINE" ]; then
+        # Find the line after the colibri location block ends
+        AFTER_COLIBRI=$(awk "NR > $MEETING_LINE && /^}/ {print NR+1; exit}" "$MEET_CONF")
+        if [ -z "$AFTER_COLIBRI" ]; then
+            AFTER_COLIBRI=$((MEETING_LINE + 10))
+        fi
+        sed -i "${AFTER_COLIBRI}i\\
+\\
+# Meeting room routing - serve index.html\\
+location ~ ^/([^/?&:'"'"'"]+)$ {\\
+    try_files \$uri \$uri/ /index.html;\\
+}\\
+" "$MEET_CONF"
+    fi
+fi
+
+# Ensure root is set correctly
+if ! grep -q "^root /usr/share/jitsi-meet;" "$MEET_CONF"; then
+    sed -i '/^server_name/a\
+root /usr/share/jitsi-meet;' "$MEET_CONF"
+fi
+
+# Final nginx test and reload after all fixes
+echo "[BOSH Fix Script] Final nginx configuration test..."
+if nginx -t 2>&1; then
+    nginx -s reload 2>&1 || echo "[BOSH Fix Script] ⚠️  Warning: nginx reload failed, but config test passed"
+    echo "[BOSH Fix Script] ✅ Meeting room routing fixed and nginx reloaded"
+    
+    # Verify meeting room location block
+    if grep -q "location ~ ^/(\[^/\]\+)$" "$MEET_CONF" && grep -q "try_files.*/index.html" "$MEET_CONF"; then
+        echo "[BOSH Fix Script] ✅ Meeting room routing verified"
+    else
+        echo "[BOSH Fix Script] ⚠️  Warning: Meeting room routing may not be properly configured"
+        echo "[BOSH Fix Script] Current meeting room block:"
+        grep -n -A 3 "location ~ ^/(\[^/\]\+)$" "$MEET_CONF" | head -5
+    fi
+else
+    echo "[BOSH Fix Script] ❌ ERROR: nginx configuration test failed after fixes"
+    echo "[BOSH Fix Script] Error details:"
+    nginx -t 2>&1 | head -20
+    exit 1
+fi
 
 echo "[BOSH Fix Script] ✅ BOSH configuration fix completed successfully"
