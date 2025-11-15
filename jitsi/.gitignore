@@ -42,3 +42,6 @@ Thumbs.db
 .idea/
 *.iml
 
+# Documentation/structure info
+.structure
+

@@ -1,4 +1,0 @@
-# Test file
-location = /http-bind {
-    proxy_pass http://prosody:5280/http-bind;
-}
