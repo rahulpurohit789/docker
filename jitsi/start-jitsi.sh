@@ -23,8 +23,8 @@ if [ -f "$MEET_CONF_HOST" ]; then
     # Create a backup of our fixed version (this will be used by the container script)
     cp "$MEET_CONF_HOST" "$FIXED_BACKUP" 2>/dev/null || true
     
-    # Verify our fixed version has the correct BOSH config
-    if grep -q 'proxy_pass http://prosody:5280/http-bind;' "$MEET_CONF_HOST"; then
+    # Verify our fixed version has the correct BOSH config (new pattern with rewrite to strip query params)
+    if grep -q 'rewrite ^/http-bind$ /http-bind break;' "$MEET_CONF_HOST" && grep -q 'proxy_pass http://prosody:5280;$' "$MEET_CONF_HOST"; then
         echo "✅ meet.conf exists and has our fixed configuration"
     else
         echo "❌ ERROR: meet.conf does not have our fixed BOSH configuration!"
@@ -67,8 +67,8 @@ docker-compose exec -T web bash -c "
 MEET_CONF=/config/nginx/meet.conf
 FIXED_CONF=/config/nginx/meet.conf.fixed
 
-# Check if file has our fixed BOSH configuration
-if grep -q 'proxy_pass http://prosody:5280/http-bind;' \$MEET_CONF; then
+# Check if file has our fixed BOSH configuration (new pattern with rewrite to strip query params)
+if grep -q 'rewrite ^/http-bind$ /http-bind break;' \$MEET_CONF && grep -q 'proxy_pass http://prosody:5280;$' \$MEET_CONF; then
     echo '✅ Container meet.conf has our fixed configuration'
 else
     echo '⚠️  Container meet.conf is still wrong - restoring now...'
@@ -95,7 +95,7 @@ fi
 
 # Final check: If host file was overwritten (shouldn't happen since we have protection scripts)
 if [ -f "$MEET_CONF_HOST" ]; then
-    if ! grep -q 'proxy_pass http://prosody:5280/http-bind;' "$MEET_CONF_HOST"; then
+    if ! grep -q 'rewrite ^/http-bind$ /http-bind break;' "$MEET_CONF_HOST" || ! grep -q 'proxy_pass http://prosody:5280;$' "$MEET_CONF_HOST"; then
         echo "⚠️  Host meet.conf was overwritten - restoring from git..."
         chmod 644 "$MEET_CONF_HOST" 2>/dev/null || true
         git checkout -- "$MEET_CONF_HOST" 2>/dev/null || {

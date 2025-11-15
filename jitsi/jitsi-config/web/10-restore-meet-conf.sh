@@ -22,8 +22,8 @@ if [ ! -f "$MEET_CONF" ]; then
     exit 0  # Don't fail, just continue
 fi
 
-# Check if file has our fixed BOSH configuration
-if ! grep -q 'proxy_pass http://prosody:5280/http-bind;' "$MEET_CONF"; then
+# Check if file has our fixed BOSH configuration (new pattern with rewrite to strip query params)
+if ! grep -q 'rewrite ^/http-bind$ /http-bind break;' "$MEET_CONF" || ! grep -q 'proxy_pass http://prosody:5280;$' "$MEET_CONF"; then
     echo "[Restore Config] ⚠️  meet.conf was overwritten by Jitsi's 10-config - restoring fixed version..."
     
     # Backup the overwritten version (for debugging)
