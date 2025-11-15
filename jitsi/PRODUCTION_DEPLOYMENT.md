@@ -69,7 +69,7 @@ JIBRI_XMPP_PASSWORD=generated-password
 
 ```env
 # Jitsi Configuration - MUST match Jitsi .env
-JITSI_DOMAIN=meet.yourdomain.com
+JITSI_DOMAIN=35.154.130.125
 JITSI_APP_ID=collabsphere
 JITSI_SECRET=your-production-secret-minimum-32-characters-random
 # IMPORTANT: Must exactly match JWT_APP_SECRET in Jitsi .env
