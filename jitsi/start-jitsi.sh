@@ -76,6 +76,10 @@ location = /http-bind {\\
     proxy_buffering off;\\
     tcp_nodelay on;\\
     proxy_read_timeout 3600s;\\
+    proxy_http_version 1.1;\\
+    proxy_method POST;\\
+    proxy_pass_request_headers on;\\
+    proxy_pass_request_body on;\\
 }\\
 \\
 # BOSH - Subdomain support\\
@@ -88,13 +92,24 @@ location ~ ^/([^/?&:'"'"'"]+)/http-bind {\\
     proxy_buffering off;\\
     tcp_nodelay on;\\
     proxy_read_timeout 3600s;\\
+    proxy_http_version 1.1;\\
+    proxy_method POST;\\
+    proxy_pass_request_headers on;\\
+    proxy_pass_request_body on;\\
 }\\
 " "\$MEET_CONF"
+
+# Fix meeting room routing to serve index.html
+sed -i 's|try_files $uri @root_path;|try_files $uri $uri/ /index.html;|g' "\$MEET_CONF"
+sed -i 's|rewrite ^/(.*)$ / break;|rewrite ^/(.*)$ /index.html break;|g' "\$MEET_CONF"
+
+# Remove @root_path location block if it exists (no longer needed)
+sed -i '/location @root_path {/,/^}/d' "\$MEET_CONF"
 
 # Test and reload nginx
 if nginx -t 2>/dev/null; then
     nginx -s reload 2>/dev/null || true
-    echo "✅ BOSH configuration fixed and nginx reloaded"
+    echo "✅ BOSH configuration and meeting room routing fixed - nginx reloaded"
 else
     echo "❌ ERROR: nginx configuration test failed"
     exit 1
